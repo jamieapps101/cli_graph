@@ -62,6 +62,11 @@ impl GraphConfig {
     //     self.y_range = range;
     //     self
     // }
+
+    /// Gets current value of the max width
+    pub fn get_max_width(&self) -> usize { self.max_width }
+    /// Gets current value of the max height
+    pub fn get_max_height(&self) -> usize { self.max_height }
 }
 
 
@@ -101,9 +106,26 @@ impl<T> GraphData<T> {
     }
 }
 
+/// Enum used to specify graph type to render in `graph` function
+#[derive(PartialEq)]
+pub enum GraphType {
+    Bar,
+    Scatter,
+    ScatterInterpolated,
+}
+
+/// Umbrella method giving easier access to each graph type
+pub fn graph<T: Into<GraphData<f64>>>(data: T, config: GraphConfig, graph_type: GraphType) -> Result<(), GraphError> {
+    match graph_type {
+        GraphType::Bar                 => bar_graph(data,config,graph_type),
+        GraphType::Scatter             => bar_graph(data,config,graph_type),
+        GraphType::ScatterInterpolated => unimplemented!(),
+    }
+}
+
 
 /// Render a bar graph to the CLI using Column data in f64 format
-pub fn bar_graph<T: Into<GraphData<f64>>> (data: T, config: GraphConfig) -> Result<(), GraphError> {
+pub fn bar_graph<T: Into<GraphData<f64>>> (data: T, config: GraphConfig, graph_type: GraphType) -> Result<(), GraphError> {
     // // Main Setup
     
     // check there is data
@@ -112,8 +134,8 @@ pub fn bar_graph<T: Into<GraphData<f64>>> (data: T, config: GraphConfig) -> Resu
     if graph_data.is_empty() { return Err(GraphError::NoData); }
 
     // check reasonable config
-    if config.max_width < REASONABLE_MIN_MAX_WIDTH { return Err(GraphError::GraphConfigMaxWidthTooSmall); } 
-    if config.max_width < REASONABLE_MIN_MAX_HEIGHT { return Err(GraphError::GraphConfigMaxHeightTooSmall); } 
+    if config.get_max_width() < REASONABLE_MIN_MAX_WIDTH { return Err(GraphError::GraphConfigMaxWidthTooSmall); } 
+    if config.get_max_width() < REASONABLE_MIN_MAX_HEIGHT { return Err(GraphError::GraphConfigMaxHeightTooSmall); } 
 
     
     let mut max_val : f64 = 0.0;
@@ -187,6 +209,7 @@ pub fn bar_graph<T: Into<GraphData<f64>>> (data: T, config: GraphConfig) -> Resu
                 _ => {
                     let y_index_pos = index-2;
                     let y_val_at_line = (y_index_pos as f64)*scale + min_val;
+                    let y_val_at_next_line = ((y_index_pos+1) as f64)*scale + min_val;
                     // print y value corresponding with row (or space if row index is odd)
                     if index%2 == 0  || index==(config.max_height-1) {
                         let y_val_at_line_str = format!("{}",y_val_at_line);
@@ -200,12 +223,24 @@ pub fn bar_graph<T: Into<GraphData<f64>>> (data: T, config: GraphConfig) -> Resu
                     row.push('|');
                     // for each column to be rendered in this figure
                     current_pass_render_cols.iter().for_each(|c| {
-                        if c.value >= y_val_at_line {
-                            // render hash if the column value is greater than the y axis value
-                            row.push('#');
-                        } else {
-                            // space otherwise
-                            row.push(' ');
+                        match graph_type {
+                            GraphType::Bar => {
+                                if c.value >= y_val_at_line {
+                                    row.push('#');
+                                } else {
+                                    row.push(' ');
+                                }
+                            }
+
+                            GraphType::Scatter => {
+                                if c.value >= y_val_at_line &&  c.value < y_val_at_next_line {
+                                    row.push('#');
+                                } else {
+                                    row.push(' ');
+                                }
+                            }
+
+                            _ => unreachable!(),
                         }
                         // fill remaining space with empty space
                         (0..c.name.len()).for_each(|_| row.push(' '));
@@ -229,22 +264,37 @@ pub fn bar_graph<T: Into<GraphData<f64>>> (data: T, config: GraphConfig) -> Resu
 mod tests {
     use super::*;
 
-    #[test]
-    fn bar_graph_single_figure_f64() {
+    fn gen_small_data() -> GraphData<f64> {
         let names  : Vec<String> = vec!["apples","oranges","bananas","grapes"].iter().map(|&s| s.to_owned() ).collect();
         let values : Vec<f64>    = vec![5.0,3.0,8.0,2.0];
         let gd = GraphData::from((names, values));
+        return gd;
+    }
+
+    #[test]
+    fn bar_graph_single_figure_f64() {
+        println!("\n\n");
+        let gd = gen_small_data();
         let gc = GraphConfig::new().max_height(11);
-        bar_graph(gd, gc).unwrap();
+        graph(gd, gc, GraphType::Bar).unwrap();
     }
 
     #[test]
     fn bar_graph_multi_figure_f64() {
+        println!("\n\n");
         let names  : Vec<String> = vec!["apples","oranges","bananas","grapes","apples","oranges","bananas","grapes","apples","oranges","bananas","grapes"].iter().map(|&s| s.to_owned() ).collect();
         let values : Vec<f64>    = (0..12).map(|v| v as f64).collect();
         let gd : GraphData<f64> = (names, values).into();
         let gd = gd.title("Lots of Fruit");
         let gc = GraphConfig::new().max_height(11).max_width(50);
-        bar_graph(gd, gc).unwrap();
+        graph(gd, gc, GraphType::Bar).unwrap();
+    }
+
+    #[test]
+    fn scatter_graph_single_figure_f64() {
+        println!("\n\n");
+        let gd = gen_small_data();
+        let gc = GraphConfig::new().max_height(11);
+        graph(gd, gc, GraphType::Scatter).unwrap();
     }
 }
