@@ -1,9 +1,13 @@
 [package]
-name = "rust_bar_graph"
+name = "cli_graph"
 version = "0.1.0"
 authors = ["jamie <jamieapps101@gmail.com>"]
 edition = "2018"
+license = "MIT OR Apache-2.0"
+description = "Small crate to generate simple CLI graphs"
+categories = ["command-line-utilities"]
+readme = "README.md"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+
