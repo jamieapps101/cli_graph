@@ -1,12 +1,9 @@
 //! Small crate to generate simple CLI graphs
 //!
 
-
-// type ValueType;
-
 /// Primary data point of a bar graph
 #[derive(Clone)]
-pub struct Column<T> where T: Copy {
+pub struct Column<T> {
     /// Name will be printed below the x-axis for the bar
     pub name: String,
     /// Value will determine the bar height
@@ -14,38 +11,37 @@ pub struct Column<T> where T: Copy {
 }
 
 /// Used to provide additional configuration for graphs
-pub struct GraphConfig<T> {
+pub struct GraphConfig {
     max_width: usize,
     max_height: usize,
-    title: Option<String>,
-    y_range: YDataRange<T>
+    // y_range: YDataRange<T>
 }
 
 /// Used to set the range type of the y-axis
-pub enum YDataRange<T> {
+pub enum YDataRange {
     /// Use the maximum and minimum values of the data given
     Min2Max,
     /// Between 0 and the maximum of the data given
     Zero2Max,
-    /// Between the first and the second value supplied
-    /// the first value should be the lower end of the range
-    Custom(T,T)
+
+    // Between the first and the second value supplied
+    // the first value should be the lower end of the range
+    // Custom(T,T)
 }
 
-impl<T> Default for GraphConfig<T> {
+impl Default for GraphConfig {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T> GraphConfig<T> {
+impl GraphConfig {
     /// Create a default config, specifying 80 column width, 5 column height and no title
     pub fn new() -> Self {
         GraphConfig {
             max_width: 80,
             max_height: 5,
-            title: None,
-            y_range: YDataRange::Min2Max,
+            // y_range: YDataRange::Min2Max,
         }
     }
 
@@ -61,17 +57,11 @@ impl<T> GraphConfig<T> {
         self
     }
 
-    /// Set the graph title 
-    pub fn title<S: ToString>(mut self, t: S) -> Self {
-        self.title = Some(t.to_string());
-        self
-    }
-
     // Set the y-axis range style
-    pub fn y_range(mut self, range: YDataRange<T>) -> Self {
-        self.y_range = range;
-        self
-    }
+    // pub fn y_range(mut self, range: YDataRange) -> Self {
+    //     self.y_range = range;
+    //     self
+    // }
 }
 
 
@@ -87,21 +77,41 @@ pub enum GraphError {
     GraphConfigMaxHeightTooSmall,
 }
 
-type GraphData<T> = Vec<Column<T>>;
+pub struct GraphData<T> {
+    data: Vec<Column<T>>,
+    title: Option<String>,
+}
+
+impl<T: Copy> From<(Vec<String>,Vec<T>)> for GraphData<T> {
+    fn from(d: (Vec<String>,Vec<T>)) -> GraphData<T> {
+        let data = d.0.iter().zip(d.1.iter()).map(|(n,v)| {
+            Column { name: n.clone(), value: *v } }).collect();
+
+        GraphData {
+            data,
+            title: None,
+        }
+    }
+}
+
+impl<T> GraphData<T> {
+    pub fn title<S: ToString>(mut self, t: S) -> Self {
+        self.title = Some(t.to_string());
+        self
+    }
+}
+
 
 /// Render a bar graph to the CLI using Column data in f64 format
-pub fn bar_graph<T> (data: T, config: Option<GraphConfig<T>>) -> Result<(), GraphError> where Vec<Column<f64>>: From<T> {
+pub fn bar_graph<T: Into<GraphData<f64>>> (data: T, config: GraphConfig) -> Result<(), GraphError> {
     // // Main Setup
     
     // check there is data
-    let mut graph_data : GraphData<f64> = data.into();
+    let source_data: GraphData<f64> = data.into();
+    let mut graph_data = source_data.data;
     if graph_data.is_empty() { return Err(GraphError::NoData); }
 
     // check reasonable config
-    let config = match config {
-        Some(external_config) => external_config,
-        None => GraphConfig::new(),
-    };
     if config.max_width < REASONABLE_MIN_MAX_WIDTH { return Err(GraphError::GraphConfigMaxWidthTooSmall); } 
     if config.max_width < REASONABLE_MIN_MAX_HEIGHT { return Err(GraphError::GraphConfigMaxHeightTooSmall); } 
 
@@ -118,7 +128,7 @@ pub fn bar_graph<T> (data: T, config: Option<GraphConfig<T>>) -> Result<(), Grap
     
     
     // print title if appropriate
-    if let Some(title) = config.title {
+    if let Some(title) = source_data.title {
         println!("\t{}",title);
     }
     
@@ -219,39 +229,22 @@ pub fn bar_graph<T> (data: T, config: Option<GraphConfig<T>>) -> Result<(), Grap
 mod tests {
     use super::*;
 
-    struct TestData {
-        names: Vec<String>,
-        values: Vec<f64>
-    }
-
-    impl From<TestData> for Vec<Column<f64>> {
-        fn from(td: TestData) -> GraphData<f64> {
-            td.names.iter().zip(td.values.iter()).map(|(n,v)| {
-                Column { name: n.clone(), value: *v } }).collect()
-        }
-    }
-
     #[test]
     fn bar_graph_single_figure_f64() {
-        let names  = vec!["apples","oranges","bananas","grapes"].iter().map(|&s| s.to_owned() ).collect();
-        let values = vec![5.0,3.0,8.0,2.0];
-        let td = TestData { names, values };
-        let values : GraphData<f64> = td.into();
-
+        let names  : Vec<String> = vec!["apples","oranges","bananas","grapes"].iter().map(|&s| s.to_owned() ).collect();
+        let values : Vec<f64>    = vec![5.0,3.0,8.0,2.0];
+        let gd = GraphData::from((names, values));
         let gc = GraphConfig::new().max_height(11);
-
-        bar_graph(values, Some(gc)).unwrap();
+        bar_graph(gd, gc).unwrap();
     }
 
     #[test]
     fn bar_graph_multi_figure_f64() {
-        let names  = vec!["apples","oranges","bananas","grapes","apples","oranges","bananas","grapes","apples","oranges","bananas","grapes"].iter().map(|&s| s.to_owned() ).collect();
-        let values = (0..12).map(|v| v as f64).collect();
-        let td = TestData { names, values };
-        let values : GraphData<f64> = td.into();
-
-        let gc = GraphConfig::new().max_height(11).max_width(50).title("Lots of Fruit");
-
-        bar_graph(values, Some(gc)).unwrap();
+        let names  : Vec<String> = vec!["apples","oranges","bananas","grapes","apples","oranges","bananas","grapes","apples","oranges","bananas","grapes"].iter().map(|&s| s.to_owned() ).collect();
+        let values : Vec<f64>    = (0..12).map(|v| v as f64).collect();
+        let gd : GraphData<f64> = (names, values).into();
+        let gd = gd.title("Lots of Fruit");
+        let gc = GraphConfig::new().max_height(11).max_width(50);
+        bar_graph(gd, gc).unwrap();
     }
 }
