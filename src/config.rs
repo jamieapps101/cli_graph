@@ -1,0 +1,59 @@
+
+/// Used to provide additional configuration for graphs
+pub struct GraphConfig {
+    max_width: usize,
+    max_height: usize,
+    // y_range: YDataRange<T>
+}
+
+/// Used to set the range type of the y-axis
+pub enum YDataRange {
+    /// Use the maximum and minimum values of the data given
+    Min2Max,
+    /// Between 0 and the maximum of the data given
+    Zero2Max,
+
+    // Between the first and the second value supplied
+    // the first value should be the lower end of the range
+    // Custom(T,T)
+}
+
+impl Default for GraphConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl GraphConfig {
+    /// Create a default config, specifying 80 column width, 5 column height and no title
+    pub fn new() -> Self {
+        GraphConfig {
+            max_width: 80,
+            max_height: 5,
+            // y_range: YDataRange::Min2Max,
+        }
+    }
+
+    /// Set the max height of the graph
+    pub fn max_height(mut self, h: usize) -> Self {
+        self.max_height = h;
+        self
+    }
+
+    /// Set the max width of the x-axis across the terminal
+    pub fn max_width(mut self, w: usize) -> Self {
+        self.max_width = w;
+        self
+    }
+
+    // Set the y-axis range style
+    // pub fn y_range(mut self, range: YDataRange) -> Self {
+    //     self.y_range = range;
+    //     self
+    // }
+
+    /// Gets current value of the max width
+    pub fn get_max_width(&self) -> usize { self.max_width }
+    /// Gets current value of the max height
+    pub fn get_max_height(&self) -> usize { self.max_height }
+}
