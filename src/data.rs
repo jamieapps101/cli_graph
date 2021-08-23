@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use crate::colour::*;
 
 // pub trait LabelTrait: Clone+Display {}
 
@@ -12,17 +13,18 @@ pub struct DataPoint<L,V> where L: Clone+Display {
     pub label: L,
     /// Value will determine the bar height
     pub value: V,
+    pub colour: Option<Colour>,
 }
 
 pub struct GraphData<L,V> where L: Clone+Display {
-    data: Vec<DataPoint<L,V>>,
-    title: Option<String>,
+    pub data: Vec<DataPoint<L,V>>,
+    pub title: Option<String>,
 }
 
 impl<V: Copy, L:Clone+Display> From<(Vec<L>,Vec<V>)> for GraphData<L,V> {
     fn from(d: (Vec<L>,Vec<V>)) -> GraphData<L,V> {
         let data = d.0.iter().zip(d.1.iter()).map(|(n,v)| {
-            DataPoint { label: n.clone(), value: *v } }).collect();
+            DataPoint { label: n.clone(), value: *v, colour: None } }).collect();
 
         GraphData {
             data,
@@ -33,7 +35,7 @@ impl<V: Copy, L:Clone+Display> From<(Vec<L>,Vec<V>)> for GraphData<L,V> {
 impl<V: Copy, L:Clone+Display> From<Vec<(L,V)>> for GraphData<L,V> {
     fn from(d: Vec<(L,V)>) -> GraphData<L,V> {
         let data = d.iter().map(|(n,v)| {
-            DataPoint { label: n.clone(), value: *v } }).collect();
+            DataPoint { label: n.clone(), value: *v, colour: None } }).collect();
 
         GraphData {
             data,

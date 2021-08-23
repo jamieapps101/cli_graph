@@ -9,6 +9,9 @@ pub use config::*;
 mod data;
 pub use data::*;
 
+mod colour;
+pub use colour::*;
+
 const REASONABLE_MIN_MAX_WIDTH : usize = 40;
 const REASONABLE_MIN_MAX_HEIGHT : usize = 3;
 
@@ -43,7 +46,6 @@ struct YScaleInformation {
 fn handle_y_scaling(graph_data: &[DataPoint<String,f64>], graph_config: &GraphConfig<f64>) -> Result<YScaleInformation,GraphError > {
     let mut max_val : f64 = f64::MIN;
     let mut min_val : f64 = f64::MAX;
-    println!("in handle_y_scaling");
     match graph_config.get_y_range() {
         YDataRange::Min2Max => {
             graph_data.iter().map(|d| d.value).for_each(|v| {
@@ -89,6 +91,7 @@ pub fn graph<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, config: Grap
         DataPoint {
             label: format!("{}",dp.label),
             value: dp.value,
+            colour: dp.colour,
         }
     }).collect();
 
@@ -176,25 +179,23 @@ pub fn graph<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, config: Grap
                     row.push('|');
                     // for each column to be rendered in this figure
                     current_pass_render_cols.iter().for_each(|c| {
-                        match graph_type {
-                            GraphType::Bar => {
+                        if graph_type == GraphType::Bar || (graph_type==GraphType::Scatter && c.value >= y_val_at_line &&  c.value < y_val_at_next_line ) {
                                 if c.value >= y_val_at_line {
-                                    row.push(config.get_plotting_symbol());
+                                    if let Some(colour) = c.colour {
+                                        row.push_str(
+                                            &fmt_in_colour(
+                                                config.get_plotting_symbol(),
+                                                colour,
+                                                Layer::ForeGround)
+                                            );
+                                    } else {
+                                        row.push(config.get_plotting_symbol());
+                                    }
                                 } else {
                                     row.push(' ');
                                 }
-                            }
-
-                            GraphType::Scatter => {
-                                if c.value >= y_val_at_line &&  c.value < y_val_at_next_line {
-                                    row.push(config.get_plotting_symbol());
-                                } else {
-                                    row.push(' ');
-                                }
-                            }
-
-                            _ => unreachable!(),
                         }
+
                         // fill remaining space with empty space
                         (0..c.label.len()).for_each(|_| row.push(' '));
                     });
@@ -267,6 +268,20 @@ mod tests {
         let gc = GraphConfig::new()
             .max_height(11)
             .y_range(YDataRange::Custom(1.0,15.0));
+        graph(gd, gc, GraphType::Scatter).unwrap();
+    }
+
+    #[test]
+    fn scatter_graph_single_figure_f64_with_colour() {
+        println!("\n\n");
+        let colours = [Colour::Red, Colour::Green, Colour::Blue, Colour::Orange];
+        let mut gd = gen_small_data();
+        gd.data = gd.data.iter().enumerate().map(|(index,d)| {
+            let mut new_d = d.clone();
+            new_d.colour = Some(colours[index]);
+            new_d
+        }).collect();
+        let gc = GraphConfig::new().max_height(11);
         graph(gd, gc, GraphType::Scatter).unwrap();
     }
 }
