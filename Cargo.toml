@@ -1,9 +1,9 @@
 [package]
 name = "cli_graph"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["jamie <jamieapps101@gmail.com>"]
 edition = "2018"
-license = "MIT OR Apache-2.0"
+license = "MIT"
 description = "Small crate to generate simple CLI graphs"
 categories = ["command-line-utilities","development-tools::debugging", "visualization"]
 readme = "README.md"

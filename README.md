@@ -3,7 +3,15 @@ By Jamie Apps
 
 A crate to allow generation of simple CLI graphs 
 
-Eg:
+Current Features:
+- Bar and Scatter Graph modes
+- Coloured customisable graph ticks
+- Customisable y-axis scales
+- Multi-Line graphs for large x-axis ranges
+- Variable height and width graphs
+
+
+Example:
 
 ``` rust
 let names  : Vec<String> = vec!["apples","oranges","bananas","grapes"].iter().map(|&s| s.to_owned() ).collect();
