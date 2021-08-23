@@ -179,7 +179,7 @@ pub fn graph<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, config: Grap
                         match graph_type {
                             GraphType::Bar => {
                                 if c.value >= y_val_at_line {
-                                    row.push('#');
+                                    row.push(config.get_plotting_symbol());
                                 } else {
                                     row.push(' ');
                                 }
@@ -187,7 +187,7 @@ pub fn graph<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, config: Grap
 
                             GraphType::Scatter => {
                                 if c.value >= y_val_at_line &&  c.value < y_val_at_next_line {
-                                    row.push('#');
+                                    row.push(config.get_plotting_symbol());
                                 } else {
                                     row.push(' ');
                                 }

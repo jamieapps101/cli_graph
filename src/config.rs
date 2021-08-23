@@ -5,6 +5,7 @@ pub struct GraphConfig<T> where T: Copy+Clone {
     max_width: usize,
     max_height: usize,
     y_range: YDataRange<T>,
+    graph_symbol: char,
 }
 
 /// Used to set the range type of the y-axis
@@ -33,6 +34,7 @@ impl<T: Copy+Clone> GraphConfig<T> {
             max_width: 80,
             max_height: 5,
             y_range: YDataRange::Min2Max,
+            graph_symbol: '#',
         }
     }
 
@@ -53,6 +55,12 @@ impl<T: Copy+Clone> GraphConfig<T> {
         self.y_range = range;
         self
     }
+
+    /// Set the plotting symbol, default '#'
+    pub fn plotting_symbol(mut self, s: char) -> Self {
+        self.graph_symbol = s;
+        self
+    }
     
     /// Gets current value of the max width
     pub fn get_max_width(&self) -> usize { self.max_width }
@@ -60,4 +68,6 @@ impl<T: Copy+Clone> GraphConfig<T> {
     pub fn get_max_height(&self) -> usize { self.max_height }
     /// Gets current value of the y ranging mode
     pub fn get_y_range(&self) -> YDataRange<T> { self.y_range }
+    /// Gets the plotting symbol
+    pub fn get_plotting_symbol(&self) -> char { self.graph_symbol }
 }
