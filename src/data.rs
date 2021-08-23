@@ -1,11 +1,6 @@
 use std::fmt::Display;
 use crate::colour::*;
 
-// pub trait LabelTrait: Clone+Display {}
-
-// this is used in graph function
-// impl LabelTrait for String {}
-
 /// Primary data point of a bar graph
 #[derive(Clone)]
 pub struct DataPoint<L,V> where L: Clone+Display {
@@ -32,10 +27,34 @@ impl<V: Copy, L:Clone+Display> From<(Vec<L>,Vec<V>)> for GraphData<L,V> {
         }
     }
 }
+
+impl<V: Copy, L:Clone+Display> From<(Vec<L>,Vec<V>,Vec<Colour>)> for GraphData<L,V> {
+    fn from(d: (Vec<L>,Vec<V>,Vec<Colour>)) -> GraphData<L,V> {
+        let data = d.0.iter().zip(d.1.iter()).zip(d.2.iter()).map(|((n,v),c)| {
+            DataPoint { label: n.clone(), value: *v, colour: Some(*c) } }).collect();
+
+        GraphData {
+            data,
+            title: None,
+        }
+    }
+}
 impl<V: Copy, L:Clone+Display> From<Vec<(L,V)>> for GraphData<L,V> {
     fn from(d: Vec<(L,V)>) -> GraphData<L,V> {
         let data = d.iter().map(|(n,v)| {
             DataPoint { label: n.clone(), value: *v, colour: None } }).collect();
+
+        GraphData {
+            data,
+            title: None,
+        }
+    }
+}
+
+impl<V: Copy, L:Clone+Display> From<Vec<(L,V, Colour)>> for GraphData<L,V> {
+    fn from(d: Vec<(L,V, Colour)>) -> GraphData<L,V> {
+        let data = d.iter().map(|(n,v,c)| {
+            DataPoint { label: n.clone(), value: *v, colour: Some(*c) } }).collect();
 
         GraphData {
             data,

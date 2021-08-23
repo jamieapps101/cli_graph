@@ -100,7 +100,7 @@ pub fn graph_as_string<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, co
     let (graph_data,title_option) = source_data.split();
     if graph_data.is_empty() { return Err(GraphError::NoData); }
 
-    let mut graph_data: Vec<DataPoint<String,f64>> = graph_data.iter().map(|dp| {
+    let mut graph_data: Vec<DataPoint<String,f64>> = graph_data.iter().rev().map(|dp| {
         DataPoint {
             label: format!("{}",dp.label),
             value: dp.value,
@@ -281,13 +281,10 @@ mod tests {
     #[test]
     fn scatter_graph_single_figure_f64_with_colour() {
         println!("\n\n");
-        let colours = [Colour::Red, Colour::Green, Colour::Blue, Colour::Orange];
-        let mut gd = gen_small_data();
-        gd.data = gd.data.iter().enumerate().map(|(index,d)| {
-            let mut new_d = d.clone();
-            new_d.colour = Some(colours[index]);
-            new_d
-        }).collect();
+        let colours : Vec<Colour> = vec![Colour::Red, Colour::Green, Colour::Blue, Colour::Orange, Colour::Cyan];
+        let names   : Vec<String> = vec!["apples","oranges","bananas","grapes","mangos"].iter().map(|&s| s.to_owned() ).collect();
+        let values  : Vec<f64>    = vec![5.0,3.0,8.0,2.0,7.2];
+        let gd = GraphData::from((names, values, colours));
         let gc = GraphConfig::new().max_height(11);
         graph(gd, gc, GraphType::Scatter).unwrap();
     }
