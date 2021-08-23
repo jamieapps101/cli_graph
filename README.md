@@ -28,4 +28,4 @@ gives:
      grapes bananas oranges apples 
 ```
 
-**Note** : This crate is still quite young and its API will likely change. If this is an issue, please constrain the version in the Cargo.toml.
+**Note** : This crate is still quite young and it's API will likely change. If this is an issue, please constrain the version in the Cargo.toml.
