@@ -207,10 +207,12 @@ pub fn graph_as_string<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, co
                                 } else {
                                     row.push(' ');
                                 }
+                        } else {
+                            row.push(' ');
                         }
 
                         // fill remaining space with empty space
-                        (0..(c.label.len()+1)).for_each(|_| row.push(' '));
+                        (0..c.label.len()).for_each(|_| row.push(' '));
                     });
                 }
             }
