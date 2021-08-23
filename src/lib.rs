@@ -61,7 +61,6 @@ fn handle_y_scaling(graph_data: &[DataPoint<String,f64>], graph_config: &GraphCo
             });
         },
         YDataRange::Custom(min,max) => {
-            println!("hit custom: ({},{})",min,max);
             if min > max {
                 return Err(GraphError::CustomRangeLowerValueLargerThanUpperValue);
             }
@@ -81,6 +80,18 @@ fn handle_y_scaling(graph_data: &[DataPoint<String,f64>], graph_config: &GraphCo
 
 /// Render a graph to the CLI using Column data in f64 format
 pub fn graph<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, config: GraphConfig<f64>, graph_type: GraphType) -> Result<(), GraphError> {
+    match graph_as_string(data, config, graph_type) {
+        Ok(graph_string) => {
+            // println!("in ok");
+            println!("{}",graph_string);
+            Ok(())
+        },
+        Err(reason) => Err(reason),
+    }
+}
+
+/// Render a graph to string to allow redirection
+pub fn graph_as_string<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, config: GraphConfig<f64>, graph_type: GraphType) -> Result<String, GraphError> {
     // // Main Setup
     
     // check there is data
@@ -113,6 +124,7 @@ pub fn graph<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, config: Grap
     }
     
     // Graphing Section!
+    let mut rows: Vec<String> = Vec::with_capacity(config.get_max_height());
     while !graph_data.is_empty() {
         // plan graph
         let mut current_pass_render_cols : Vec<DataPoint<String,f64>> = Vec::new();
@@ -146,8 +158,7 @@ pub fn graph<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, config: Grap
         let graph_width : usize = useable_column_width;
 
         // // generate graph rows
-        let mut rows: Vec<String> = Vec::with_capacity(config.get_max_height());
-        for index in 0..config.get_max_height() {
+        for index in (0..config.get_max_height()).rev() {
             let mut row = String::new();
             match index {
                 // names are printed on first row
@@ -198,20 +209,14 @@ pub fn graph<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, config: Grap
                         }
 
                         // fill remaining space with empty space
-                        (0..c.label.len()).for_each(|_| row.push(' '));
+                        (0..(c.label.len()+1)).for_each(|_| row.push(' '));
                     });
                 }
             }
             rows.push(row);
         } 
-
-
-        // print graph pass
-        rows.iter().rev().for_each(|r| {
-            println!("{}", r);
-        });
     }
-    Ok(())
+    Ok(rows.join("\n"))
 }
 
 

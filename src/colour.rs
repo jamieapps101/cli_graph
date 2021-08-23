@@ -14,6 +14,7 @@ pub enum Colour {
 }
 
 #[derive(Copy,Clone)]
+#[allow(dead_code)]
 pub enum Layer {
     Background,
     ForeGround
