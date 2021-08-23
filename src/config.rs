@@ -1,13 +1,15 @@
 
 /// Used to provide additional configuration for graphs
-pub struct GraphConfig<T> {
+#[derive(Debug)]
+pub struct GraphConfig<T> where T: Copy+Clone {
     max_width: usize,
     max_height: usize,
     y_range: YDataRange<T>,
 }
 
 /// Used to set the range type of the y-axis
-pub enum YDataRange<T> {
+#[derive(Clone,Copy,Debug)]
+pub enum YDataRange<T> where T: Copy+Clone {
     /// Use the maximum and minimum values of the data given
     Min2Max,
     /// Between 0 and the maximum of the data given
@@ -18,13 +20,13 @@ pub enum YDataRange<T> {
     Custom(T,T)
 }
 
-impl<T> Default for GraphConfig<T> {
+impl<T: Copy+Clone> Default for GraphConfig<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T> GraphConfig<T> {
+impl<T: Copy+Clone> GraphConfig<T> {
     /// Create a default config, specifying 80 column width, 5 column height and no title
     pub fn new() -> Self {
         GraphConfig {
@@ -51,9 +53,11 @@ impl<T> GraphConfig<T> {
         self.y_range = range;
         self
     }
-
+    
     /// Gets current value of the max width
     pub fn get_max_width(&self) -> usize { self.max_width }
     /// Gets current value of the max height
     pub fn get_max_height(&self) -> usize { self.max_height }
+    /// Gets current value of the y ranging mode
+    pub fn get_y_range(&self) -> YDataRange<T> { self.y_range }
 }

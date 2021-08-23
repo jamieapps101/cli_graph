@@ -19,6 +19,7 @@ pub enum GraphError {
     ColumnNameTooWideForGraphConfig,
     GraphConfigMaxWidthTooSmall,
     GraphConfigMaxHeightTooSmall,
+    CustomRangeLowerValueLargerThanUpperValue,
 }
 
 
@@ -31,8 +32,52 @@ pub enum GraphType {
     ScatterInterpolated,
 }
 
+
+#[derive(Debug)]
+struct YScaleInformation {
+    // range: f64,
+    scale: f64,
+    min:   f64,
+}
+
+fn handle_y_scaling(graph_data: &[DataPoint<String,f64>], graph_config: &GraphConfig<f64>) -> Result<YScaleInformation,GraphError > {
+    let mut max_val : f64 = f64::MIN;
+    let mut min_val : f64 = f64::MAX;
+    println!("in handle_y_scaling");
+    match graph_config.get_y_range() {
+        YDataRange::Min2Max => {
+            graph_data.iter().map(|d| d.value).for_each(|v| {
+                max_val = max_val.max(v);
+                min_val = min_val.min(v);
+            });
+        },
+        YDataRange::Zero2Max => {
+            min_val = 0.0;
+            graph_data.iter().map(|d| d.value).for_each(|v| {
+                max_val = max_val.max(v);
+            });
+        },
+        YDataRange::Custom(min,max) => {
+            println!("hit custom: ({},{})",min,max);
+            if min > max {
+                return Err(GraphError::CustomRangeLowerValueLargerThanUpperValue);
+            }
+            max_val = max;
+            min_val = min;
+        },
+    }
+    let range = max_val-min_val;
+    let scale = range/((graph_config.get_max_height()-3) as f64);
+
+    Ok(YScaleInformation {
+        // range,
+        scale,
+        min:   min_val,
+    })
+}
+
 /// Render a graph to the CLI using Column data in f64 format
-pub fn graph<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, config: GraphConfig<T>, graph_type: GraphType) -> Result<(), GraphError> {
+pub fn graph<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, config: GraphConfig<f64>, graph_type: GraphType) -> Result<(), GraphError> {
     // // Main Setup
     
     // check there is data
@@ -52,15 +97,11 @@ pub fn graph<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, config: Grap
     if config.get_max_width() < REASONABLE_MIN_MAX_HEIGHT { return Err(GraphError::GraphConfigMaxHeightTooSmall); } 
 
     // handle y scale
-    let mut max_val : f64 = 0.0;
-    let mut min_val : f64 = graph_data[0].value;
-    graph_data.iter().map(|d| d.value).for_each(|v| {
-        max_val = max_val.max(v);
-        min_val = min_val.min(v);
-    });
-    let range = max_val-min_val;
-    let scale = range/((config.get_max_height()-3) as f64);
-    
+    let y_scale_info: YScaleInformation;
+    match handle_y_scaling(&graph_data, &config) {
+        Ok(ysi) => y_scale_info = ysi,
+        Err(reason) => return Err(reason),
+    }
     
     // print title if appropriate
     if let Some(title) = title_option {
@@ -77,7 +118,7 @@ pub fn graph<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, config: Grap
             if graph_data[0].label.len() < useable_column_width {
                 let col = graph_data.pop().unwrap();
                 // subtract the space required for the column from the remaining figure space
-                useable_column_width -= col.label.len();
+                useable_column_width -= col.label.len()+1;
                 // insert the column to be rendered
                 current_pass_render_cols.push(col);
                 // advance the column index
@@ -92,13 +133,13 @@ pub fn graph<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, config: Grap
         // for each col in this figure
         (0..config.get_max_height()).for_each(|line_index|{
             // use linear interpolation to get the values to be rendered
-            let line_val = scale*(line_index as f64)+min_val;
+            let line_val = y_scale_info.scale*(line_index as f64)+y_scale_info.min;
             // format to a string and record the value
             max_y_val_character_width = max_y_val_character_width.max(format!("{}",line_val).len());
         });
 
         // determin remaining terminal cols after rendering y values and y axis
-        let graph_width : usize = config.get_max_height()+max_y_val_character_width - useable_column_width;
+        let graph_width : usize = useable_column_width;
 
         // // generate graph rows
         let mut rows: Vec<String> = Vec::with_capacity(config.get_max_height());
@@ -120,8 +161,8 @@ pub fn graph<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, config: Grap
                 // render graph area
                 _ => {
                     let y_index_pos = index-2;
-                    let y_val_at_line = (y_index_pos as f64)*scale + min_val;
-                    let y_val_at_next_line = ((y_index_pos+1) as f64)*scale + min_val;
+                    let y_val_at_line = (y_index_pos as f64)*y_scale_info.scale + y_scale_info.min;
+                    let y_val_at_next_line = ((y_index_pos+1) as f64)*y_scale_info.scale + y_scale_info.min;
                     // print y value corresponding with row (or space if row index is odd)
                     if index%2 == 0  || index==(config.get_max_height()-1) {
                         let y_val_at_line_str = format!("{}",y_val_at_line);
@@ -203,10 +244,29 @@ mod tests {
     }
 
     #[test]
-    fn scatter_graph_single_figure_f64() {
+    fn scatter_graph_single_figure_f64_default_scale() {
         println!("\n\n");
         let gd = gen_small_data();
         let gc = GraphConfig::new().max_height(11);
+        graph(gd, gc, GraphType::Scatter).unwrap();
+    }
+
+
+    #[test]
+    fn scatter_graph_single_figure_f64_zero2max() {
+        println!("\n\n");
+        let gd = gen_small_data();
+        let gc = GraphConfig::new().max_height(11).y_range(YDataRange::Zero2Max);
+        graph(gd, gc, GraphType::Scatter).unwrap();
+    }
+
+    #[test]
+    fn scatter_graph_single_figure_f64_custom() {
+        println!("\n\n");
+        let gd = gen_small_data();
+        let gc = GraphConfig::new()
+            .max_height(11)
+            .y_range(YDataRange::Custom(1.0,15.0));
         graph(gd, gc, GraphType::Scatter).unwrap();
     }
 }
