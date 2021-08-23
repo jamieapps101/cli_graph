@@ -13,6 +13,7 @@ mod colour;
 use colour::*;
 pub use colour::Colour;
 
+
 const REASONABLE_MIN_MAX_WIDTH : usize = 40;
 const REASONABLE_MIN_MAX_HEIGHT : usize = 3;
 
