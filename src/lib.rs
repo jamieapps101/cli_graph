@@ -1,6 +1,8 @@
 //! Small crate to generate simple CLI graphs
 //!
 
+use std::fmt::Display;
+
 mod config;
 pub use config::*;
 
@@ -29,37 +31,33 @@ pub enum GraphType {
     ScatterInterpolated,
 }
 
-/// Umbrella method giving easier access to each graph type
-pub fn graph<T: Into<GraphData<f64>>>(data: T, config: GraphConfig, graph_type: GraphType) -> Result<(), GraphError> {
-    match graph_type {
-        GraphType::Bar                 => bar_graph(data,config,graph_type),
-        GraphType::Scatter             => bar_graph(data,config,graph_type),
-        GraphType::ScatterInterpolated => unimplemented!(),
-    }
-}
-
-
-/// Render a bar graph to the CLI using Column data in f64 format
-pub fn bar_graph<T: Into<GraphData<f64>>> (data: T, config: GraphConfig, graph_type: GraphType) -> Result<(), GraphError> {
+/// Render a graph to the CLI using Column data in f64 format
+pub fn graph<L: Clone+Display, T: Into<GraphData<L,f64>>> (data: T, config: GraphConfig<T>, graph_type: GraphType) -> Result<(), GraphError> {
     // // Main Setup
     
     // check there is data
-    let source_data: GraphData<f64> = data.into();
-    let (mut graph_data,title_option) = source_data.split();
+    let source_data: GraphData<L,f64> = data.into();
+    let (graph_data,title_option) = source_data.split();
     if graph_data.is_empty() { return Err(GraphError::NoData); }
+
+    let mut graph_data: Vec<DataPoint<String,f64>> = graph_data.iter().map(|dp| {
+        DataPoint {
+            label: format!("{}",dp.label),
+            value: dp.value,
+        }
+    }).collect();
 
     // check reasonable config
     if config.get_max_width() < REASONABLE_MIN_MAX_WIDTH { return Err(GraphError::GraphConfigMaxWidthTooSmall); } 
     if config.get_max_width() < REASONABLE_MIN_MAX_HEIGHT { return Err(GraphError::GraphConfigMaxHeightTooSmall); } 
 
-    
+    // handle y scale
     let mut max_val : f64 = 0.0;
     let mut min_val : f64 = graph_data[0].value;
     graph_data.iter().map(|d| d.value).for_each(|v| {
         max_val = max_val.max(v);
         min_val = min_val.min(v);
     });
-    
     let range = max_val-min_val;
     let scale = range/((config.get_max_height()-3) as f64);
     
@@ -72,14 +70,14 @@ pub fn bar_graph<T: Into<GraphData<f64>>> (data: T, config: GraphConfig, graph_t
     // Graphing Section!
     while !graph_data.is_empty() {
         // plan graph
-        let mut current_pass_render_cols : Vec<Column<f64>> = Vec::new();
+        let mut current_pass_render_cols : Vec<DataPoint<String,f64>> = Vec::new();
         let mut useable_column_width = config.get_max_width() - 1; // to account for numbers and y axis
         while !graph_data.is_empty() {
             // // for each column to be rendered, if there is space left on the current graph figure
-            if graph_data[0].name.len() < useable_column_width {
+            if graph_data[0].label.len() < useable_column_width {
                 let col = graph_data.pop().unwrap();
                 // subtract the space required for the column from the remaining figure space
-                useable_column_width -= col.name.len();
+                useable_column_width -= col.label.len();
                 // insert the column to be rendered
                 current_pass_render_cols.push(col);
                 // advance the column index
@@ -112,7 +110,7 @@ pub fn bar_graph<T: Into<GraphData<f64>>> (data: T, config: GraphConfig, graph_t
                     // add padding to account for y axis value width
                     (0..max_y_val_character_width+1).for_each(|_| row.push(' '));
                     // print column names with spacing
-                    current_pass_render_cols.iter().for_each(|c| row.push_str( &format!("{} ",c.name) ) );  
+                    current_pass_render_cols.iter().for_each(|c| row.push_str( &format!("{} ",c.label) ) );  
                 },
                 // add x axis
                 1 => {
@@ -157,7 +155,7 @@ pub fn bar_graph<T: Into<GraphData<f64>>> (data: T, config: GraphConfig, graph_t
                             _ => unreachable!(),
                         }
                         // fill remaining space with empty space
-                        (0..c.name.len()).for_each(|_| row.push(' '));
+                        (0..c.label.len()).for_each(|_| row.push(' '));
                     });
                 }
             }
@@ -178,7 +176,7 @@ pub fn bar_graph<T: Into<GraphData<f64>>> (data: T, config: GraphConfig, graph_t
 mod tests {
     use super::*;
 
-    fn gen_small_data() -> GraphData<f64> {
+    fn gen_small_data() -> GraphData<String,f64> {
         let names  : Vec<String> = vec!["apples","oranges","bananas","grapes"].iter().map(|&s| s.to_owned() ).collect();
         let values : Vec<f64>    = vec![5.0,3.0,8.0,2.0];
         let gd = GraphData::from((names, values));
@@ -198,7 +196,7 @@ mod tests {
         println!("\n\n");
         let names  : Vec<String> = vec!["apples","oranges","bananas","grapes","apples","oranges","bananas","grapes","apples","oranges","bananas","grapes"].iter().map(|&s| s.to_owned() ).collect();
         let values : Vec<f64>    = (0..12).map(|v| v as f64).collect();
-        let gd : GraphData<f64> = (names, values).into();
+        let gd : GraphData<String,f64> = (names, values).into();
         let gd = gd.title("Lots of Fruit");
         let gc = GraphConfig::new().max_height(11).max_width(50);
         graph(gd, gc, GraphType::Bar).unwrap();
